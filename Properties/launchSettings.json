@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "ImageDataExtractor": {
+      "commandName": "Project",
+      "commandLineArgs": "../../../../testImage.accountpicture-ms \"PNG\" \"extractedImage\""
+    }
+  }
+}
