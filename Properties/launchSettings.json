@@ -2,7 +2,7 @@
   "profiles": {
     "ImageDataExtractor": {
       "commandName": "Project",
-      "commandLineArgs": "../../../../testImage.accountpicture-ms \"PNG\" \"extractedImage\""
+      "commandLineArgs": "../../../../testImage.accountpicture-ms"
     }
   }
 }

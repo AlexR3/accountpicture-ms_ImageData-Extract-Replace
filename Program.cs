@@ -10,25 +10,29 @@ namespace ImageDataExtractor
 
 		public static int Main(string[] args)
 		{
-			if (args.Length < 2)
+			string outFilename = string.Empty;
+
+			if (args.Length < 1)
 			{
-				Console.WriteLine("Please provide the .accountpicture-ms file path and file format.\n\t <executable name> <file name> <format (\"PNG'\" or \"JFIF\")> <output file name (optional)>");
+				Console.WriteLine("Please provide the .accountpicture-ms file path and file format.\n\t<executable name> <file name> <output file name (optional)>");
 
 				return 1;
 			}
 
-			string outFilename = Path.GetFileNameWithoutExtension(args[0]);
-
-			if (args[2] != null)
+			if (args.Length >= 2)
 			{
-				outFilename = args[2];
+				outFilename = args[1];
+			}
+			else
+			{
+				outFilename = Path.GetFileNameWithoutExtension(args[0]);
 			}
 
 			FileStream fs = new FileStream(args[0], FileMode.Open);
 
-			Bitmap image96 = GetImage(args[1], 96, fs);
+			Bitmap image96 = GetImage(96, fs);
 			image96.Save(outFilename + "-96.bmp");
-			Bitmap image448 = GetImage(args[1], 448, fs);
+			Bitmap image448 = GetImage(448, fs);
 			image448.Save(outFilename + "-448.bmp");
 
 			fs.Close();
@@ -39,7 +43,7 @@ namespace ImageDataExtractor
 			return 0;
 		}
 
-		public static Bitmap GetImage(string imageFormat, int size, FileStream fs)
+		public static Bitmap GetImage(int size, FileStream fs)
 		{
 			var offset = size switch
 			{
@@ -49,18 +53,30 @@ namespace ImageDataExtractor
 			};
 
 			byte[] buffer = new byte[Convert.ToInt32(fs.Length)];
-			long position = GetIndexOfFormatString(fs, imageFormat, offset);
 
-			switch (imageFormat)
+			string[] imageFormats = { "PNG", "JFIF" };
+			long position = -1;
+
+			foreach (var imageFormat in imageFormats)
 			{
-				case "JFIF":
-					position -= 6;
+				position = GetIndexOfFormatString(fs, imageFormat, offset);
+
+				if (position != -1)
+				{
+					switch (imageFormat)
+					{
+						case "PNG":
+							position -= 1;
+							break;
+						case "JFIF":
+							position -= 6;
+							break;
+						default:
+							break;
+					}
+
 					break;
-				case "PNG":
-					position -= 1;
-					break;
-				default:
-					break;
+				}
 			}
 
 			fs.Seek(position, SeekOrigin.Begin);
