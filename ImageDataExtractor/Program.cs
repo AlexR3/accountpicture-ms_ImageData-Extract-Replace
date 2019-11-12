@@ -10,8 +10,6 @@ namespace ImageDataExtractor
 
 		public static int Main(string[] args)
 		{
-			string outFilename = string.Empty;
-
 			if (args.Length < 1)
 			{
 				Console.WriteLine("Please provide the .accountpicture-ms file.\n\t<executable name> <file name> <output file name (optional)>");
@@ -19,14 +17,12 @@ namespace ImageDataExtractor
 				return -1;
 			}
 
+			string outFilename;
+
 			if (args.Length >= 2)
-			{
 				outFilename = args[1];
-			}
 			else
-			{
 				outFilename = Path.GetFileNameWithoutExtension(args[0]);
-			}
 
 			FileStream fs;
 
@@ -41,38 +37,60 @@ namespace ImageDataExtractor
 				return -1;
 			}
 
-			Bitmap image96 = GetImage(96, fs);
-			image96.Save(outFilename + "-96.bmp");
-			Bitmap image448 = GetImage(448, fs);
-			image448.Save(outFilename + "-448.bmp");
+			var image96 = GetImage(fs, 96);
+			var image448 = GetImage(fs, 448);
+
+			if (image96 == null)
+			{
+				Console.WriteLine("Cannot extract 96x96 image.");
+			}
+
+			if (image448 == null)
+			{
+				Console.WriteLine("Cannot extract 448x448 image.");
+			}
+
+			try
+			{
+				image96.Save(outFilename + "-96.bmp");
+				image448.Save(outFilename + "-448.bmp");
+			}
+			catch (Exception e)
+			{
+				Console.WriteLine("Cannot save images");
+				Console.WriteLine(e.Message);
+
+				return -1;
+			}
 
 			fs.Close();
 			fs.Dispose();
 
-			Console.WriteLine("Extracted images successfully");
+			Console.WriteLine("Operation completed.");
 
 			return 0;
 		}
+
+#nullable enable
 
 		/// <summary>
 		/// Extract an image from file stream
 		/// </summary>
 		/// <param name="size">image size</param>
 		/// <param name="fs">file stream</param>
-		/// <returns></returns>
-		public static Bitmap GetImage(int size, FileStream fs)
+		/// <returns>an image</returns>
+		public static Image? GetImage(FileStream fs, int size)
 		{
 			var offset = size switch
 			{
 				96 => 0,
 				448 => 100,
-				_ => throw new Exception($"Size {size} is not valid"),
+				_ => throw new Exception($"Size {size} is not valid")
 			};
-
-			byte[] buffer = new byte[Convert.ToInt32(fs.Length)];
 
 			string[] imageFormats = { "PNG", "JFIF" };
 			long position = -1;
+			byte[] buffer = new byte[Convert.ToInt32(fs.Length)];
 
 			foreach (var imageFormat in imageFormats)
 			{
@@ -99,11 +117,25 @@ namespace ImageDataExtractor
 			fs.Seek(position, SeekOrigin.Begin);
 			fs.Read(buffer, 0, buffer.Length);
 
-			var ms = new MemoryStream(buffer);
-			var bitmapImage = new Bitmap(ms);
+			var memoryStream = new MemoryStream(buffer);
 
-			return bitmapImage;
+			Image image;
+
+			try
+			{
+				image = new Bitmap(memoryStream);
+			}
+			catch (ArgumentException)
+			{
+				Console.WriteLine("Cannot extract an image from file.");
+
+				return null;
+			}
+
+			return image;
 		}
+
+#nullable disable
 
 		#endregion
 

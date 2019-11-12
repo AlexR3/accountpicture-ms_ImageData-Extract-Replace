@@ -2,8 +2,6 @@
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
-using System.Net.Http.Headers;
-using System.Threading;
 
 namespace ImageDataExtractor
 {
