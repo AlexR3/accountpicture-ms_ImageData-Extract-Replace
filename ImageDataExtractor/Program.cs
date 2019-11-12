@@ -14,9 +14,9 @@ namespace ImageDataExtractor
 
 			if (args.Length < 1)
 			{
-				Console.WriteLine("Please provide the .accountpicture-ms file path and file format.\n\t<executable name> <file name> <output file name (optional)>");
+				Console.WriteLine("Please provide the .accountpicture-ms file.\n\t<executable name> <file name> <output file name (optional)>");
 
-				return 1;
+				return -1;
 			}
 
 			if (args.Length >= 2)
@@ -28,7 +28,18 @@ namespace ImageDataExtractor
 				outFilename = Path.GetFileNameWithoutExtension(args[0]);
 			}
 
-			FileStream fs = new FileStream(args[0], FileMode.Open);
+			FileStream fs;
+
+			try
+			{
+				fs = new FileStream(args[0], FileMode.Open);
+			}
+			catch (FileNotFoundException e)
+			{
+				Console.WriteLine(e.Message);
+
+				return -1;
+			}
 
 			Bitmap image96 = GetImage(96, fs);
 			image96.Save(outFilename + "-96.bmp");
@@ -43,6 +54,12 @@ namespace ImageDataExtractor
 			return 0;
 		}
 
+		/// <summary>
+		/// Extract an image from file stream
+		/// </summary>
+		/// <param name="size">image size</param>
+		/// <param name="fs">file stream</param>
+		/// <returns></returns>
 		public static Bitmap GetImage(int size, FileStream fs)
 		{
 			var offset = size switch
@@ -91,6 +108,14 @@ namespace ImageDataExtractor
 		#endregion
 
 		#region Helpers
+
+		/// <summary>
+		/// Find image format position in file stream
+		/// </summary>
+		/// <param name="fs">file stream</param>
+		/// <param name="imageFormat">image format to look for</param>
+		/// <param name="offset">offset in file stream</param>
+		/// <returns></returns>
 		public static long GetIndexOfFormatString(FileStream fs, string imageFormat, int offset)
 		{
 			char[] search = imageFormat.ToCharArray();

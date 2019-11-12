@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "ImageDataReplacer": {
+      "commandName": "Project",
+      "commandLineArgs": "../../../../../testImage.accountpicture-ms ../../../../importImage.png"
+    }
+  }
+}
