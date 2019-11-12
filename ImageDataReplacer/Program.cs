@@ -18,37 +18,27 @@ namespace ImageDataExtractor
 				return -1;
 			}
 
-			FileStream fs;
+			var fs = ReadFile(args[0]);
 
-			try
+			if (fs == null)
 			{
-				fs = new FileStream(args[0], FileMode.Open);
+				return -1;
 			}
-			catch (FileNotFoundException e)
+
+			var image = GetImage(args[1]);
+
+			if (image == null)
 			{
-				Console.WriteLine(e.Message);
+				Console.WriteLine("Cannot read image file.");
 
 				return -1;
 			}
 
-			Bitmap bitmap = GetImage(args[1]);
+			var image96 = new Bitmap(image, new Size(96, 96));
+			var image448 = new Bitmap(image, new Size(448, 448));
 
-			if (bitmap == null)
-			{
-				Console.WriteLine("Cannot open image file.");
-
-				return -1;
-			}
-
-			Image image = bitmap;
-
-			Bitmap image96 = new Bitmap(image, new Size(96, 96));
-			Bitmap image448 = new Bitmap(image, new Size(448, 448));
-
-			long position = GetImageOffset(fs, 0);
-			InsertImage(fs, position, image96);
-			position = GetImageOffset(fs, 100);
-			InsertImage(fs, position, image448);
+			InsertImage(fs, GetImageOffset(fs, 0), image96);
+			InsertImage(fs, GetImageOffset(fs, 100), image448);
 
 			fs.Close();
 			fs.Dispose();
@@ -59,28 +49,33 @@ namespace ImageDataExtractor
 		}
 
 		/// <summary>
-		/// Read image file
+		/// Get image from image file
 		/// </summary>
 		/// <param name="imageFileName">Path to image file</param>
-		/// <returns></returns>
-		public static Bitmap GetImage(string imageFileName)
+		/// <returns>an image from file</returns>
+		public static Image GetImage(string imageFileName)
 		{
-			FileStream fs;
-			try
-			{
-				fs = new FileStream(imageFileName, FileMode.Open);
-			}
-			catch (FileNotFoundException e)
-			{
-				Console.WriteLine(e.Message);
+			var fs = ReadFile(imageFileName);
 
+			if (fs == null)
+			{
 				return null;
 			}
 
 			byte[] buffer = new byte[Convert.ToInt32(fs.Length)];
+
 			fs.Read(buffer, 0, buffer.Length);
 
-			MemoryStream memoryStream = new MemoryStream(buffer);
+			MemoryStream memoryStream;
+
+			try
+			{
+				memoryStream = new MemoryStream(buffer);
+			}
+			catch (Exception)
+			{
+				return null;
+			}
 
 			return new Bitmap(memoryStream);
 		}
@@ -93,22 +88,47 @@ namespace ImageDataExtractor
 		/// <param name="image">an image to insert</param>
 		public static void InsertImage(FileStream fs, long offset, Image image)
 		{
-			byte[] buffer = new byte[Convert.ToInt32(fs.Length)];
+			var fsOut = new FileStream(MakeOutFileName(fs.Name), FileMode.Create);
 
-			fs.Read(buffer, 0, buffer.Length);
+			if (fsOut == null)
+			{
+				Console.WriteLine("Cannot create new file.");
 
-			MemoryStream memoryStream = new MemoryStream();
-			image.Save(memoryStream, ImageFormat.Png);
-			var imageByeArray = memoryStream.ToArray();
-			imageByeArray.CopyTo(buffer, offset);
+				return;
+			}
+			else
+			{
+				MemoryStream memoryStream = new MemoryStream();
+				byte[] buffer = new byte[Convert.ToInt32(fs.Length)];
 
-			FileStream fsOut = new FileStream(fs.Name + "_Modified", FileMode.Create);
-			fsOut.Write(buffer, 0, buffer.Length);
+				fs.Read(buffer, 0, buffer.Length);
+				image.Save(memoryStream, ImageFormat.Png);
+
+				try
+				{
+					memoryStream.ToArray().CopyTo(buffer, offset);
+					fsOut.Write(buffer, 0, buffer.Length);
+				}
+				catch (Exception e)
+				{
+					Console.WriteLine($"Cannot insert image into file at offset {offset}.\n{e.Message}");
+				}
+			}
 
 			fsOut.Close();
 			fsOut.Dispose();
 		}
 
+		#endregion
+
+		#region Helpers
+
+		/// <summary>
+		/// Get image data offset at file stream
+		/// </summary>
+		/// <param name="fs">file stream</param>
+		/// <param name="offset">approximate file stream offset</param>
+		/// <returns></returns>
 		public static long GetImageOffset(FileStream fs, int offset)
 		{
 
@@ -142,9 +162,42 @@ namespace ImageDataExtractor
 			return position;
 		}
 
-		#endregion
+		/// <summary>
+		/// Make filename for a new file
+		/// </summary>
+		/// <param name="filename">original file name</param>
+		/// <returns>new filename</returns>
+		public static string MakeOutFileName(string filename)
+		{
+			var originalFileName = Path.GetFileNameWithoutExtension(filename);
 
-		#region Helpers
+			originalFileName += "_modified" + Path.GetExtension(filename);
+
+			return originalFileName;
+		}
+
+		/// <summary>
+		/// Open file wrapper
+		/// </summary>
+		/// <param name="filename">filename or absolute path</param>
+		/// <returns>file stream or null</returns>
+		public static FileStream ReadFile(string filename)
+		{
+			FileStream fs;
+
+			try
+			{
+				fs = new FileStream(filename, FileMode.Open);
+			}
+			catch (FileNotFoundException e)
+			{
+				Console.WriteLine(e.Message);
+
+				return null;
+			}
+
+			return fs;
+		}
 
 		/// <summary>
 		/// Find image format position in file stream
@@ -152,7 +205,7 @@ namespace ImageDataExtractor
 		/// <param name="fs">file stream</param>
 		/// <param name="imageFormat">image format to look for</param>
 		/// <param name="offset">offset in file stream</param>
-		/// <returns></returns>
+		/// <returns>index of image format string</returns>
 		public static long GetIndexOfFormatString(FileStream fs, string imageFormat, int offset)
 		{
 			char[] search = imageFormat.ToCharArray();

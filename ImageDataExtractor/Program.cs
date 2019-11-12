@@ -24,16 +24,10 @@ namespace ImageDataExtractor
 			else
 				outFilename = Path.GetFileNameWithoutExtension(args[0]);
 
-			FileStream fs;
+			var fs = ReadFile(args[0]);
 
-			try
+			if (fs == null)
 			{
-				fs = new FileStream(args[0], FileMode.Open);
-			}
-			catch (FileNotFoundException e)
-			{
-				Console.WriteLine(e.Message);
-
 				return -1;
 			}
 
@@ -71,15 +65,13 @@ namespace ImageDataExtractor
 			return 0;
 		}
 
-#nullable enable
-
 		/// <summary>
 		/// Extract an image from file stream
 		/// </summary>
 		/// <param name="size">image size</param>
 		/// <param name="fs">file stream</param>
 		/// <returns>an image</returns>
-		public static Image? GetImage(FileStream fs, int size)
+		public static Image GetImage(FileStream fs, int size)
 		{
 			var offset = size switch
 			{
@@ -135,11 +127,32 @@ namespace ImageDataExtractor
 			return image;
 		}
 
-#nullable disable
-
 		#endregion
 
 		#region Helpers
+
+		/// <summary>
+		/// Open file wrapper
+		/// </summary>
+		/// <param name="filename">filename or absolute path</param>
+		/// <returns>file stream or null</returns>
+		public static FileStream ReadFile(string filename)
+		{
+			FileStream fs;
+
+			try
+			{
+				fs = new FileStream(filename, FileMode.Open);
+			}
+			catch (FileNotFoundException e)
+			{
+				Console.WriteLine(e.Message);
+
+				return null;
+			}
+
+			return fs;
+		}
 
 		/// <summary>
 		/// Find image format position in file stream
@@ -147,7 +160,7 @@ namespace ImageDataExtractor
 		/// <param name="fs">file stream</param>
 		/// <param name="imageFormat">image format to look for</param>
 		/// <param name="offset">offset in file stream</param>
-		/// <returns></returns>
+		/// <returns>index of image format string</returns>
 		public static long GetIndexOfFormatString(FileStream fs, string imageFormat, int offset)
 		{
 			char[] search = imageFormat.ToCharArray();
